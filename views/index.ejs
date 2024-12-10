@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Data</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body{
+            background-color: #705226;
+            flex-direction: column;
+        }
+        .filter-form {
+            margin: 10px;
+            padding: 10px;
+            
+        }
+        .card {
+            margin: 10px ;
+            background-color: #a68254;
+        }
+    </style>
+</head>
+<body>
+    <!--form to ge input from user-->
+    <form class="filter-form">
+        <label class="label">Enter Company Name:</label>
+        <input type="text" id="Organization" name="Organization" class="form-control mb-3" placeholder="Enter organization name">
+        
+        <label class="label">Enter Rating:</label>
+        <input type="number" id="Rating" name="Rating" min="0" max="5" class="form-control mb-3" placeholder="Enter rating">
+        
+        <button type="button" id="search-btn" class="btn btn-primary">Search</button>
+        <a href="/logout" class="btn btn-danger">logout</a>
+    </form>
+    <!-- output-->
+    <div id="data-container">
+                <h3>Search Results</h3>
+                <div id="data-output">
+                    
+                </div>
+            </div>
+            
+            
+        </div>
+    </div>
+    <div id="totp"></div>
+    <!--pagination-->
+    <div id="pagination">
+        <button id="prev-btn" class="btn btn-secondary">Previous</button>
+        <input type="number" id="page-input" class="form-control" style="width: 80px; display: inline-block;" min="1">
+        <button id="jump-btn" class="btn btn-info">Go</button>
+        <button id="next-btn" class="btn btn-secondary" >Next</button>
+        <button id="refresh-btn" class="btn btn-warning">Refresh</button>
+    
+    </div>
+    <script>
+       
+const button = document.getElementById("search-btn");
+const formel = document.querySelector(".filter-form");
+
+
+formel.addEventListener("keydown",  async (event) => {
+    if (event.key === "Enter") {
+        button.click();
+    }   
+});
+//add event listener to search button
+button.addEventListener("click", async function (e) {
+    //e.preventDefault();
+
+    //encode the user input to handle symbols present in input
+    const Organization =encodeURIComponent( document.getElementById("Organization").value);
+    const Rating = encodeURIComponent(document.getElementById("Rating").value);
+    const pageno =document.getElementById("page-input").value;
+   
+   const filter = new URLSearchParams({Organization,Rating,pageno:1,});
+   let url= `http://localhost:3000/million/result?${filter.toString()}`;
+
+    try {
+        //make api call
+        const response = await fetch(url, { method: "GET",});
+       
+
+        const result = await response.json();
+        //render the data
+        renderdata(result.data);
+        updatepages(result.currentp, result.totalp);
+        console.log(result.totalp);
+        const op=document.getElementById('totp');
+        op.innerHTML=`<p>Total Pages:${result.totalp}</p>`
+       
+    } catch (error) {
+
+        console.log(error);
+    }
+});
+//function that is used to render the data
+function renderdata(data) {
+    const output = document.getElementById("data-output");
+
+    if (data.length === 0) {
+        output.innerHTML = "<p>No results found.</p>";
+        return;
+    }
+    output.innerHTML = data.map((item) => `
+        <div class="card ">
+            <div class="card-body ">
+                <p><strong>ID:</strong> ${item.ID}</p>
+                <p><strong>Organization:</strong> ${item.Organization}</p>
+                <p><strong>Rating:</strong> ${item.Rating}</p>
+                <p><strong>Country:</strong> ${item.Country}</p>
+            </div>
+        </div>
+    `).join("");
+}
+//function that updates the pages after each query
+function updatepages(currentPage, totalPages) {
+    const prevBtn = document.getElementById("prev-btn");
+    const nextBtn = document.getElementById("next-btn");
+    const pageInput = document.getElementById("page-input");
+    const jumpBtn = document.getElementById("jump-btn");
+    const refreshBtn=document.getElementById("refresh-btn");
+
+    prevBtn.disabled = currentPage === 1;
+    nextBtn.disabled = currentPage === totalPages;
+
+    pageInput.value = currentPage; 
+    pageInput.setAttribute("max", totalPages);
+    pageInput.setAttribute("min", 1);
+
+
+        const op=document.getElementById('totp');
+        op.innerHTML=`<p>Total Pages:${totalPages}</p>`
+       
+}
+
+// Pagination buttons add event listsner for every button
+document.getElementById("prev-btn").addEventListener("click", () => {
+    const currentPage = parseInt(document.getElementById("page-input").value, 10);
+    if (currentPage > 1) fetchdata(currentPage - 1);
+});
+
+document.getElementById("next-btn").addEventListener("click", () => {
+    const currentPage = parseInt(document.getElementById("page-input").value, 10);
+    const maxPage = parseInt(document.getElementById("page-input").getAttribute("max"), 10);
+    if (currentPage < maxPage) fetchdata(currentPage + 1);
+});
+const jump =document.getElementById("jump-btn");
+
+
+jump.addEventListener("click", async ()=>{
+    const currentPage = parseInt(document.getElementById("page-input").value, 10);
+     await fetchdata(currentPage);
+})
+jump.addEventListener("keydown", async()=>{
+    if(event.key === 'Enter'){
+    jump.click();
+    }
+})
+document.getElementById("refresh-btn").addEventListener("click", () => {
+        console.log("Refresh button clicked");
+        document.getElementById("Organization").value = "";
+        document.getElementById("Rating").value = "";
+
+        fetchdata(1); // Fetch data for the first page
+    });
+
+//fetch data function used to fetcg data s per user request using pagenumber
+async function fetchdata(page) {
+    const Organization =encodeURIComponent( document.getElementById("Organization").value);
+    const Rating = encodeURIComponent(document.getElementById("Rating").value);
+
+    const filter = new URLSearchParams({
+        Organization,
+        Rating,
+        pageno: page,
+    });
+
+    const url = `http://localhost:3000/million/result?${filter.toString()}`;
+
+
+    try {
+    const response = await fetch(url, { method: "GET" });
+        const result = await response.json();
+
+        renderdata(result.data);
+        updatepages(result.currentp, result.totalp);
+    } catch (error) {
+console.log(error);    }
+
+}
+//add a window listener so that data loads as soon as you load the page
+window.addEventListener("load", () => {
+    document.getElementById("page-input").value = 1;
+    document.getElementById("Organization").value = "";
+    document.getElementById("Rating").value = "";
+    fetchdata(1); 
+});
+
+
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
