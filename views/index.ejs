@@ -167,6 +167,7 @@ document.getElementById("refresh-btn").addEventListener("click", () => {
     });
 
 //fetch data function used to fetcg data s per user request using pagenumber
+/*
 async function fetchdata(page) {
     const Organization =encodeURIComponent( document.getElementById("Organization").value);
     const Rating = encodeURIComponent(document.getElementById("Rating").value);
@@ -189,7 +190,62 @@ async function fetchdata(page) {
     } catch (error) {
 console.log(error);    }
 
+} */
+
+async function fetchdata(page) {
+    const Organization = encodeURIComponent(document.getElementById("Organization").value);
+    const Rating = encodeURIComponent(document.getElementById("Rating").value);
+
+    const filter = new URLSearchParams({
+        Organization,
+        Rating,
+        pageno: page,
+    });
+
+    const url = `http://localhost:3000/million/result?${filter.toString()}`;
+
+    try {
+        const response = await fetch(url, {
+            method: "GET",
+            credentials: "include", // Ensure cookies are sent with the request
+        });
+        console.log(response.status);
+        if (response.status === 401) {
+            console.log("Access token expired");
+            // If the access token is expired, handle token refresh
+            const refreshResponse = await fetch("/auth/refresh", {
+                method: "POST",
+                credentials: "include", // Include cookies in the request
+            });
+            console.log(refreshResponse);
+
+            if (refreshResponse.ok) {
+                const data = await refreshResponse.json();
+                // Retry the original request with the new access token
+                const retryResponse = await fetch(url, {
+                    method: "GET",
+                    credentials: "include", // Include cookies in the request
+                });
+
+                const result = await retryResponse.json();
+                renderdata(result.data);
+                updatepages(result.currentp, result.totalp);
+            } else {
+                // If the refresh token is invalid, redirect to login
+                window.location.href = "/auth/login";
+            }
+        } else {
+            // Handle successful response
+            const result = await response.json();
+            renderdata(result.data);
+            updatepages(result.currentp, result.totalp);
+        }
+    } catch (error) {
+        console.error("Error fetching data:", error);
+    }
 }
+
+
 //add a window listener so that data loads as soon as you load the page
 window.addEventListener("load", () => {
     document.getElementById("page-input").value = 1;
