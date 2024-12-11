@@ -1,8 +1,11 @@
+
 const express = require("express");
 //import all the functions from controller and route them to specific web adresses to access them
 const { login, signup, logout } = require("../controller/usercontroller");
 
 const router = express.Router();
+
+router.get("/", (req,res)=>res.redirect("/login"));
 
 router.get("/login", (req, res) => res.render("login"));
 router.post("/login", login);
